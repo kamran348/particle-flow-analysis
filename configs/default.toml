@@ -1,0 +1,40 @@
+[video]
+path = "data/raw/Project30102026_Test_ICC_ch00_SV.wmv"
+start_frame = 0
+# Stop is exclusive. 0 means process to the end.
+stop_frame = 100
+# Analyze every Nth frame (N=1 means every frame).
+step = 20
+# Set only if the video's reported frame rate is wrong or absent.
+fps_override = 0.0
+
+[preprocessing]
+gaussian_sigma = 0.7
+clahe_clip_limit = 0.0 # 0 disables CLAHE
+
+[exclusion]
+# Track both colored overlays in this grayscale video. Use [] to disable.
+overlay_colors = ["red", "green"]
+# Pixel margin around detected colored pixels; covers the gray tooltip too.
+padding = 60
+# Optional fixed rectangles: [left, top, right, bottom] in original image pixels.
+# Origin is top left; right/bottom bounds are exclusive.
+rectangles = []
+
+[piv]
+window_size = 32
+search_area_size = 48
+overlap = 24
+signal_to_noise_threshold = 1.05
+
+[calibration]
+# IMPORTANT: 0 means unknown; velocity is then in pixels/second.
+# Set a measured scale e.g. 0.025 for 0.025 mm/pixel.
+mm_per_pixel = 0.0
+
+[tracking]
+enabled = false
+diameter = 7             # must be odd, approximately particle image diameter
+min_mass = 50.0          # brightness threshold; tune to video
+search_range = 7.0       # maximum displacement per PROCESSED frame, px
+memory = 1               # missed processed frames allowed

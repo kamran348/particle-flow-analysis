@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "particleflow"
+version = "0.1.0"
+description = "Modular 2D particle image velocimetry and particle tracking from video"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "opencv-python>=4.8",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "openpiv>=0.24,<0.27",
+]
+
+[project.optional-dependencies]
+tracking = ["trackpy>=0.6,<0.8"]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
