@@ -54,6 +54,59 @@ To try particle tracking as well:
 python main.py analyze --config configs/default.toml --output results/tracked --track
 ```
 
+### Watch individual particle tracks
+
+```powershell
+python main.py track --config configs/default.toml --output results/tracking
+```
+
+For the experimental WMV currently referenced in `configs/default.toml`, use
+`--config configs/tracking.toml` as a starting preset. Its `diameter = 15` and
+`min_mass = 1000` reject much of the noise picked up by the generic settings.
+These values still need visual checking; faint particles may be missed.
+
+Open `results/tracking/tracking.avi` in your video player. Colored circles mark
+detected particle centers, numbers are particle IDs, and short lines show their
+recent paths. The same ID keeps its color. The header shows the source frame,
+source time and number of detections. No particles are drawn at predicted positions
+when they are missing; trails break across missed detections.
+
+This command runs **PTV only**, independently of PIV and `[tracking].enabled`.
+It saves `trajectories.csv` and `tracking_summary.json` alongside the video.
+The replay is rendered **after** detection and linking finish; it is not a live
+camera viewer. It uses your configured preprocessing, exclusion and calibration.
+
+By default `track` uses **every frame**, overriding `[video].step`, since large
+gaps make individual identities harder to maintain. It retains the configured
+start/stop range. To change the range or trail duration:
+
+```powershell
+python main.py track --stop-frame 100 --step 1 --trail-length 30
+```
+
+`--stop-frame` is exclusive; use `0` for the whole remaining video.
+`--trail-length` counts selected frames. Playback uses `fps / step`, preserving
+the elapsed video time when frames are skipped.
+
+The tracker first converts each frame to grayscale, applies Gaussian blur and
+optional CLAHE, then uses Trackpy to find bright particle centers. Detections
+touching excluded areas are removed before linking. Trackpy assigns particle
+IDs by linking nearby centers across selected frames. The CSV then derives
+velocity from each particle's displacement and actual elapsed source time.
+
+Tune these settings in `[tracking]` while checking the replay:
+
+- `diameter`: odd pixel width of the particle image, including its bright spot.
+- `min_mass`: minimum integrated brightness after Trackpy processing; increase
+  to reject faint noise, decrease if real particles are missing.
+- `search_range`: maximum linking displacement in pixels per selected frame.
+  Too small breaks tracks; too large permits incorrect matches.
+- `memory`: number of missed selected frames allowed before losing an ID.
+
+An ID represents the tracker's proposed match. Crossings, dense/overlapping
+spots, particles leaving the image, and low contrast can cause ID switches or
+broken tracks. Inspect continuity of circles and IDs against the actual spots.
+
 ## Use your own experimental video
 
 1. Put your `.mp4` or `.avi` file in `data/raw/`.
@@ -132,6 +185,7 @@ deliberately does not invent such estimates.
 - `preprocessing.py`: grayscale conversion, Gaussian blur, optional CLAHE
 - `piv.py`: OpenPIV measurement + validation + Cartesian units
 - `tracking.py`: optional Trackpy centroid linking and particle speed
+- `tracking_video.py`: particle IDs and recent trails over original frames
 - `analysis.py`: speed, vorticity, divergence, strain rate
 - `plotting.py`: vector arrows, speed maps, streamlines
 - `pipeline.py`: coordinate processing, temporal average, file exports

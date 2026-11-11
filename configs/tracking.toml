@@ -1,0 +1,27 @@
+# PTV starting settings for the experimental video in default.toml.
+# Inspect the replay: these thresholds select bright spots, not verified objects.
+[video]
+path = "data/raw/Project30102026_Test_ICC_ch00_SV.wmv"
+start_frame = 0
+stop_frame = 100
+step = 1
+fps_override = 0.0
+
+[preprocessing]
+gaussian_sigma = 0.7
+clahe_clip_limit = 0.0
+
+[exclusion]
+overlay_colors = ["red", "green"]
+padding = 60
+rectangles = []
+
+[calibration]
+mm_per_pixel = 0.0
+
+[tracking]
+enabled = true
+diameter = 15            # odd width in original pixels, before any resizing
+min_mass = 1000.0        # reject the many faint noise peaks in this footage
+search_range = 7.0       # maximum displacement per selected frame, px
+memory = 1

@@ -17,7 +17,49 @@ from .piv import VelocityField, compute_piv_pair
 from .plotting import save_plots
 from .preprocessing import preprocess_frame
 from .tracking import track_particles
+from .tracking_video import save_tracking_video
 from .video import get_video_info, iter_frames
+
+
+def run_tracking(config: AppConfig, output_dir: str | Path, trail_length: int = 20) -> dict:
+    """Run PTV without PIV and export trajectories plus an annotated replay."""
+    config.validate()
+    if trail_length < 1:
+        raise ValueError("trail_length must be >= 1")
+    info = get_video_info(config.video)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    tracks = track_particles(
+        iter_frames(config.video), info.fps, config.preprocessing, config.tracking,
+        config.calibration.mm_per_pixel, exclusion=config.exclusion,
+    )
+    save_tracking_video(
+        iter_frames(config.video), tracks, output_dir / "tracking.avi",
+        info.fps, config.tracking, config.calibration.mm_per_pixel,
+        step=config.video.step, trail_length=trail_length,
+    )
+    tracks.to_csv(output_dir / "trajectories.csv", index=False)
+    calibrated = config.calibration.mm_per_pixel > 0
+    summary = {
+        "video": str(config.video.path),
+        "fps": info.fps,
+        "start_frame": config.video.start_frame,
+        "stop_frame": config.video.stop_frame,
+        "step": config.video.step,
+        "playback_fps": info.fps / config.video.step,
+        "tracked_particles": int(tracks["particle"].nunique()),
+        "detections": len(tracks),
+        "trajectory_position_unit": "mm" if calibrated else "px",
+        "trajectory_velocity_unit": "mm/s" if calibrated else "px/s",
+        "preprocessing": asdict(config.preprocessing),
+        "tracking": asdict(config.tracking),
+        "exclusion": asdict(config.exclusion),
+        "mm_per_pixel": config.calibration.mm_per_pixel,
+        "trail_length": trail_length,
+    }
+    with (output_dir / "tracking_summary.json").open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2)
+    return summary
 
 
 def run_pipeline(config: AppConfig, output_dir: str | Path) -> dict:
