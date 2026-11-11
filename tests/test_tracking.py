@@ -92,6 +92,16 @@ def test_replay_rejects_empty_source(tmp_path):
         )
 
 
+def test_overlay_does_not_connect_across_rejected_consistency_windows():
+    raw = np.zeros((96, 128, 3), dtype=np.uint8)
+    tracks = _tracks([(0, 20, -60), (200, 80, -60)])
+    tracks["consistency_segment"] = [1, 2]
+    overlays = list(iter_tracking_overlays(
+        [(0, raw), (200, raw)], tracks, 30, TrackingConfig(),
+    ))
+    assert not overlays[1][1][60, 50].any()
+
+
 def test_tracking_workflow_exports_video_and_calibrated_csv(tmp_path):
     pytest.importorskip("trackpy")
     video = create_demo_video(
@@ -102,7 +112,7 @@ def test_tracking_workflow_exports_video_and_calibrated_csv(tmp_path):
         tracking=TrackingConfig(enabled=True, min_mass=10),
     )
     output = tmp_path / "results"
-    summary = run_tracking(config, output)
+    summary = run_tracking(config, output, export_flow=True)
     assert summary["tracked_particles"] > 0
     assert summary["playback_fps"] == 15
     tracks = pd.read_csv(output / "trajectories.csv")
@@ -110,3 +120,6 @@ def test_tracking_workflow_exports_video_and_calibrated_csv(tmp_path):
     assert len(tracks) == summary["detections"]
     assert (output / "tracking.avi").is_file()
     assert (output / "tracking_summary.json").is_file()
+    assert summary["flow_analysis"]["analysis_method"] == "ptv"
+    assert (output / "velocity_vectors.png").is_file()
+    assert (output / "streamlines.png").is_file()

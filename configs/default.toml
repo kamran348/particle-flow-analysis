@@ -1,16 +1,16 @@
 [video]
-path = "data/raw/Project30102026_Test_ICC_ch00_SV.wmv"
+path = "data/raw/Project30102026_100mA_z_3754_ICC_ch00_SV.wmv"
 start_frame = 0
 # Stop is exclusive. 0 means process to the end.
-stop_frame = 100
+stop_frame = 0
 # Analyze every Nth frame (N=1 means every frame).
-step = 20
+step = 50
 # Set only if the video's reported frame rate is wrong or absent.
 fps_override = 0.0
 
 [preprocessing]
 gaussian_sigma = 0.7
-clahe_clip_limit = 0.0 # 0 disables CLAHE
+clahe_clip_limit = 0.0  #0 disables CLAHE
 
 [exclusion]
 # Track both colored overlays in this grayscale video. Use [] to disable.
@@ -33,8 +33,15 @@ signal_to_noise_threshold = 1.05
 mm_per_pixel = 0.0
 
 [tracking]
-enabled = false
-diameter = 7             # must be odd, approximately particle image diameter
-min_mass = 50.0          # brightness threshold; tune to video
+enabled = true
+diameter = 15            # must be odd, approximately particle image diameter
+min_mass = 2000.0        # brightness threshold; tune to video
 search_range = 7.0       # maximum displacement per PROCESSED frame, px
-memory = 1               # missed processed frames allowed
+memory = 3               # missed processed frames allowed
+
+[consistency]
+# Shared selection for replay, trajectories and analysis. Detection uses step=1.
+enabled = true
+window_frames = 100     # nonoverlapping SOURCE-frame windows; incomplete tail ignored
+min_fraction = 1.0      # require all 100 frames; 0.9 allows up to 10 missing
+require_endpoints = true # same linked ID in first and last frame of each window

@@ -54,6 +54,14 @@ class TrackingConfig:
 
 
 @dataclass(frozen=True)
+class ConsistencyConfig:
+    enabled: bool = False
+    window_frames: int = 100
+    min_fraction: float = 1.0
+    require_endpoints: bool = True
+
+
+@dataclass(frozen=True)
 class AppConfig:
     video: VideoConfig = field(default_factory=VideoConfig)
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
@@ -61,6 +69,7 @@ class AppConfig:
     calibration: CalibrationConfig = field(default_factory=CalibrationConfig)
     tracking: TrackingConfig = field(default_factory=TrackingConfig)
     exclusion: ExclusionConfig = field(default_factory=ExclusionConfig)
+    consistency: ConsistencyConfig = field(default_factory=ConsistencyConfig)
 
     def validate(self) -> None:
         v, p, a, t = self.video, self.piv, self.calibration, self.tracking
@@ -91,6 +100,13 @@ class AppConfig:
             raise ValueError("tracking.diameter must be an odd integer >= 3")
         if t.min_mass < 0 or t.search_range <= 0 or t.memory < 0:
             raise ValueError("Invalid tracking settings")
+        c = self.consistency
+        if type(c.enabled) is not bool or type(c.require_endpoints) is not bool:
+            raise ValueError("consistency.enabled and require_endpoints must be booleans")
+        if type(c.window_frames) is not int or c.window_frames < 2:
+            raise ValueError("consistency.window_frames must be an integer >= 2")
+        if not 0 < c.min_fraction <= 1:
+            raise ValueError("consistency.min_fraction must be > 0 and <= 1")
 
 
 def load_config(path: str | Path) -> AppConfig:
@@ -98,7 +114,7 @@ def load_config(path: str | Path) -> AppConfig:
     config_path = Path(path)
     with config_path.open("rb") as handle:
         raw = tomllib.load(handle)
-    known = {"video", "preprocessing", "piv", "calibration", "tracking", "exclusion"}
+    known = {"video", "preprocessing", "piv", "calibration", "tracking", "exclusion", "consistency"}
     extras = set(raw) - known
     if extras:
         raise ValueError(f"Unknown config sections: {sorted(extras)}")
@@ -112,6 +128,7 @@ def load_config(path: str | Path) -> AppConfig:
         calibration=CalibrationConfig(**raw.get("calibration", {})),
         tracking=TrackingConfig(**raw.get("tracking", {})),
         exclusion=ExclusionConfig(**raw.get("exclusion", {})),
+        consistency=ConsistencyConfig(**raw.get("consistency", {})),
     )
     config.validate()
     return config

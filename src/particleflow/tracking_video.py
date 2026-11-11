@@ -36,6 +36,7 @@ def iter_tracking_overlays(
     scale = mm_per_pixel if mm_per_pixel > 0 else 1.0
     by_frame = {int(index): rows for index, rows in tracks.groupby("source_frame")}
     histories: dict[int, deque] = {}
+    segments: dict[int, int | None] = {}
     radius = max(3, tracking.diameter // 2)
 
     for selected_index, (source_frame, raw) in enumerate(frames):
@@ -47,11 +48,16 @@ def iter_tracking_overlays(
                 history.popleft()
             if not history:
                 del histories[particle]
+                segments.pop(particle, None)
 
         detections = by_frame.get(source_frame)
         if detections is not None:
             for row in detections.itertuples(index=False):
                 particle = int(row.particle)
+                segment = getattr(row, "consistency_segment", None)
+                if particle in segments and segments[particle] != segment:
+                    histories.pop(particle, None)
+                segments[particle] = segment
                 point = (int(round(row.x / scale)), int(round(-row.y / scale)))
                 histories.setdefault(particle, deque()).append((selected_index, point))
 

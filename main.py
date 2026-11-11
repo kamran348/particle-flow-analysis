@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from particleflow.config import load_config
-from particleflow.pipeline import run_pipeline, run_tracking
+from particleflow.pipeline import export_tracking_flow, run_pipeline, run_tracking
 from particleflow.synthetic import create_demo_video
 
 
@@ -19,7 +19,7 @@ def main() -> None:
     demo = commands.add_parser("demo", help="Generate a synthetic particle video")
     demo.add_argument("--output", default="data/raw/particles.avi")
 
-    analyze = commands.add_parser("analyze", help="Run PIV video analysis")
+    analyze = commands.add_parser("analyze", help="Analyze flow with PIV or consistent particle tracks")
     analyze.add_argument("--config", default="configs/default.toml")
     analyze.add_argument("--output", default="results/run1")
     analyze.add_argument("--track", action="store_true", help="Enable optional Trackpy tracking")
@@ -33,6 +33,13 @@ def main() -> None:
                        help="Exclusive stop frame; 0 means the end (default: use config)")
     track.add_argument("--trail-length", type=int, default=20,
                        help="Trail duration in selected frames (default: 20)")
+    track.add_argument("--flow", action="store_true",
+                       help="Also save vector fields, speed maps and streamlines from these tracks")
+
+    flow = commands.add_parser("flow", help="Create flow plots from an existing tracking run")
+    flow.add_argument("--tracking-dir", required=True,
+                      help="Folder containing trajectories.csv and tracking_summary.json")
+    flow.add_argument("--output", default="results/tracking-flow")
 
     args = parser.parse_args()
     if args.command == "demo":
@@ -52,9 +59,16 @@ def main() -> None:
             video = replace(video, stop_frame=args.stop_frame)
         config = replace(config, video=video, tracking=replace(config.tracking, enabled=True))
         print("Detecting and linking particles, then rendering the tracking replay...")
-        summary = run_tracking(config, args.output, trail_length=args.trail_length)
+        summary = run_tracking(config, args.output, trail_length=args.trail_length,
+                               export_flow=args.flow)
         print(json.dumps(summary, indent=2))
         print(f"Open the replay: {Path(args.output) / 'tracking.avi'}")
+        if args.flow:
+            print(f"Saved flow plots and velocity fields in: {args.output}")
+    elif args.command == "flow":
+        summary = export_tracking_flow(args.tracking_dir, args.output)
+        print(json.dumps(summary, indent=2))
+        print(f"Saved flow plots and velocity fields in: {args.output}")
 
 
 if __name__ == "__main__":

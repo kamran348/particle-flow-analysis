@@ -19,6 +19,10 @@ def _axes(name: str, field: VelocityField):
     ax.set_xlabel(f"x [{field.position_unit}]")
     ax.set_ylabel(f"y [{field.position_unit}]")
     ax.set_aspect("equal", adjustable="box")
+    # Sparse streamlines must retain the full measurement domain, rather than
+    # autoscaling to the few cells where a line can be integrated.
+    ax.set_xlim(float(np.min(field.x)), float(np.max(field.x)))
+    ax.set_ylim(float(np.min(field.y)), float(np.max(field.y)))
     return fig, ax
 
 

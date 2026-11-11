@@ -4,6 +4,11 @@ A **regular `.py` project** (no Jupyter required) to analyze seeded-particle
 videos. PIV uses OpenPIV to estimate a *2D projected velocity field*; optional
 PTV uses Trackpy to follow distinct particle centroids.
 
+The supplied configs enable **consistent-particle selection** for both replay
+and analysis. In this mode, velocity fields come exclusively from accepted
+particle tracks (PTV), rather than image cross-correlation. Set
+`[consistency].enabled = false` to use the standard PIV analysis.
+
 ## Requirements
 
 - Python **3.11+** and VS Code
@@ -62,7 +67,7 @@ python main.py track --config configs/default.toml --output results/tracking
 
 For the experimental WMV currently referenced in `configs/default.toml`, use
 `--config configs/tracking.toml` as a starting preset. Its `diameter = 15` and
-`min_mass = 1000` reject much of the noise picked up by the generic settings.
+`min_mass = 2000` reject much of the noise picked up by the generic settings.
 These values still need visual checking; faint particles may be missed.
 
 Open `results/tracking/tracking.avi` in your video player. Colored circles mark
@@ -106,6 +111,105 @@ Tune these settings in `[tracking]` while checking the replay:
 An ID represents the tracker's proposed match. Crossings, dense/overlapping
 spots, particles leaving the image, and low contrast can cause ID switches or
 broken tracks. Inspect continuity of circles and IDs against the actual spots.
+
+### Create vector fields and streamlines directly from tracking
+
+To save the replay and flow plots in one run:
+
+```powershell
+python main.py track --config configs/tracking.toml --flow --output results/tracking-flow
+```
+
+Detection and linking run **once**. The selected trajectories supply velocities
+for `velocity_vectors.png`, `speed_map.png`, `streamlines.png`,
+`velocity_field.csv`, `velocity_field.npz`, and `summary.json` in the same folder
+as `tracking.avi` and `trajectories.csv`. This works with consistency filtering
+enabled or disabled and always uses tracked particle displacements (PTV).
+`--step` chooses both replay frames and flow-pair endpoints; its default is 1.
+With consistency enabled, the initial detection pass still examines every frame.
+
+If tracking has already finished, reuse its results:
+
+```powershell
+python main.py flow --tracking-dir results/consistent-replay --output results/tracking-flow
+```
+
+The input folder must contain both `trajectories.csv` and `tracking_summary.json`.
+The original source video must also be available for frame geometry and exclusion
+masks. This command reads the saved run's frame range, step, FPS, calibration and
+exclusion settings, so edits to your current TOML do not change the meaning of
+existing trajectories. It performs **no particle detection or linking**. New
+tracking summaries retain the grid settings; older summaries use the default
+grid settings.
+
+Particle displacements divided by elapsed time produce velocities, which are
+averaged within grid windows and then over time. Streamlines follow this
+**mean velocity field**; individual particle paths remain in the tracking replay.
+Missing grid cells remain NaN and can leave gaps or prevent streamlines when
+tracking coverage is sparse.
+
+### Select only consistent particles for replay and analysis
+
+Both supplied configs contain:
+
+```toml
+[consistency]
+enabled = true
+window_frames = 100
+min_fraction = 1.0
+require_endpoints = true
+```
+
+The program detects and links candidates on **every source frame**, following
+their motion. It then checks consecutive, nonoverlapping windows: frames 0-99,
+100-199, etc., starting at your configured `start_frame`. A particle qualifies
+within a window only if the **same linked ID** appears in its first and last
+frames and in **all 100 frames** by default. Set `min_fraction = 0.9` to permit
+up to 10 missing detections per window. `require_endpoints = false` permits tracks that
+meet the coverage threshold without being seen at both boundaries.
+
+This compares temporal persistence, not brightness at a fixed image position.
+A moving particle can qualify. An ID can qualify in one window and fail in
+another; only its observations within accepted windows are retained. Incomplete
+final windows are rejected, and a run shorter than `window_frames` raises an
+error. For a 20-frame experiment, explicitly set `window_frames = 20` first.
+Missing detections remain missing even for an accepted track.
+
+Use the **same config and frame range** for both commands:
+
+```powershell
+python main.py track --config configs/tracking.toml --output results/consistent-replay
+python main.py analyze --config configs/tracking.toml --output results/consistent-analysis
+```
+
+`particle_consistency.csv` records each candidate ID/window, its coverage,
+endpoint visibility and acceptance. `trajectories.csv` contains accepted
+observations only; `consistency_segment` separates accepted portions divided
+by rejected windows. Both summaries record candidate/accepted counts and the
+number of ignored tail frames. Selecting a different video range can change
+qualification, because it changes the windows being assessed.
+
+For analysis, `[video].step` chooses velocity-pair endpoints; consistency
+detection still runs at step 1. Only accepted IDs observed at **both** endpoints
+contribute a displacement divided by the true elapsed time. Displacement
+midpoints select overlapping grid windows defined by `[piv].search_area_size`
+and `overlap`. Each cell averages the accepted particle velocities in that
+window, followed by the temporal average of available pair means. Exclusion
+masks also invalidate overlapping grid windows. `window_size` and
+`signal_to_noise_threshold` apply only to standard PIV correlation.
+
+The vector plots, speed map, streamlines, `velocity_field.csv`, and derived
+statistics therefore use only accepted trajectories. Unsupported cells stay
+NaN; no velocity or detection is interpolated. The summary identifies this as
+`analysis_method = "consistent_ptv"`; it is a field derived from tracked
+displacements, not a PIV correlation field. Spatial derivatives may be sparse.
+The replay itself still draws the original video, with annotations only for
+accepted detections.
+
+Persistence filters out transient detections but does not guarantee correct
+IDs: persistent background objects and incorrect links can still pass. It also
+selects for particles that remain visible, so these results describe that
+subset rather than every tracer in the image.
 
 ## Use your own experimental video
 
@@ -186,6 +290,8 @@ deliberately does not invent such estimates.
 - `piv.py`: OpenPIV measurement + validation + Cartesian units
 - `tracking.py`: optional Trackpy centroid linking and particle speed
 - `tracking_video.py`: particle IDs and recent trails over original frames
+- `consistency.py`: temporal coverage and endpoint checks shared by both commands
+- `ptv.py`: grid velocities from accepted particle displacements
 - `analysis.py`: speed, vorticity, divergence, strain rate
 - `plotting.py`: vector arrows, speed maps, streamlines
 - `pipeline.py`: coordinate processing, temporal average, file exports
