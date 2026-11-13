@@ -10,3 +10,4 @@ data/raw/*
 !data/raw/.gitkeep
 results/*
 !results/.gitkeep
+AGENTS.md
