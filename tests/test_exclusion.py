@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from particleflow.config import ExclusionConfig, PreprocessingConfig, TrackingConfig
-from particleflow.exclusion import build_exclusion_mask, excluded_piv_windows
+from particleflow.exclusion_mask import build_exclusion_mask, excluded_piv_windows
 from particleflow.tracking import track_particles
 
 

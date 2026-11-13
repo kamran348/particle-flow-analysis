@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .config import ExclusionConfig, PreprocessingConfig, TrackingConfig
-from .exclusion import build_exclusion_mask
+from .exclusion_mask import build_exclusion_mask
 from .preprocessing import preprocess_frame
 
 

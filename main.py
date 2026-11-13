@@ -9,7 +9,6 @@ from pathlib import Path
 
 from particleflow.config import load_config
 from particleflow.pipeline import export_tracking_flow, run_pipeline, run_tracking
-from particleflow.synthetic import create_demo_video
 
 
 def main() -> None:
@@ -42,10 +41,7 @@ def main() -> None:
     flow.add_argument("--output", default="results/tracking-flow")
 
     args = parser.parse_args()
-    if args.command == "demo":
-        created = create_demo_video(Path(args.output))
-        print(f"Created synthetic video: {created}")
-    elif args.command == "analyze":
+    if args.command == "analyze":
         config = load_config(args.config)
         if args.track:
             config = replace(config, tracking=replace(config.tracking, enabled=True))

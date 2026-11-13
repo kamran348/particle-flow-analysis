@@ -16,7 +16,7 @@ from .config import (
     PreprocessingConfig, TrackingConfig, VideoConfig,
 )
 from .consistency import filter_consistent_tracks
-from .exclusion import build_exclusion_mask
+from .exclusion_mask import build_exclusion_mask
 from .piv import VelocityField, compute_piv_pair
 from .plotting import save_plots
 from .preprocessing import preprocess_frame
@@ -50,7 +50,7 @@ def _prepare_tracks(config: AppConfig, fps: float, output_dir: Path) -> tuple[pd
     }
     if config.consistency.enabled:
         tracks, report = filter_consistent_tracks(tracks, source_frames, config.consistency)
-        report.to_csv(output_dir / "particle_consistency.csv", index=False)
+        #report.to_csv(output_dir / "particle_consistency.csv", index=False)
         details.update({
             "accepted_particle_windows": int(report["accepted"].sum()),
             "accepted_particles": int(tracks["particle"].nunique()),
@@ -83,7 +83,7 @@ def run_tracking(
         info.fps, config.tracking, config.calibration.mm_per_pixel,
         step=config.video.step, trail_length=trail_length,
     )
-    tracks.to_csv(output_dir / "trajectories.csv", index=False)
+    #tracks.to_csv(output_dir / "trajectories.csv", index=False)
     calibrated = config.calibration.mm_per_pixel > 0
     summary = {
         "video": str(config.video.path),
@@ -172,7 +172,7 @@ def run_pipeline(config: AppConfig, output_dir: str | Path) -> dict:
     consistency = asdict(config.consistency)
     if config.consistency.enabled:
         tracks, consistency = _prepare_tracks(config, info.fps, output_dir)
-        tracks.to_csv(output_dir / "trajectories.csv", index=False)
+        #tracks.to_csv(output_dir / "trajectories.csv", index=False)
     return _export_flow(
         config, output_dir, info, tracks, consistency,
         from_tracks=config.consistency.enabled,
@@ -196,16 +196,16 @@ def _export_flow(
         raise ValueError("Video contains no frames in the selected range")
     prev_index, prev_raw = first
     prev_frame = preprocess_frame(prev_raw, config.preprocessing)
-    prev_mask = build_exclusion_mask(prev_raw, config.exclusion)
-    if config.exclusion.rectangles or config.exclusion.overlay_colors:
-        # This preview represents the first selected frame; moving masks are
-        # recomputed separately for every frame throughout the analysis.
-        preview = prev_raw.copy()
-        preview[prev_mask] = (
-            0.4 * preview[prev_mask] + 0.6 * np.array([255, 0, 255])
-        ).astype(np.uint8)
-        cv2.imwrite(str(output_dir / "exclusion_preview.png"), preview)
-        cv2.imwrite(str(output_dir / "exclusion_mask.png"), prev_mask.astype(np.uint8) * 255)
+    #prev_mask = build_exclusion_mask(prev_raw, config.exclusion)
+    #if config.exclusion.rectangles or config.exclusion.overlay_colors:
+    #    # This preview represents the first selected frame; moving masks are
+    #    # recomputed separately for every frame throughout the analysis.
+    #    preview = prev_raw.copy()
+    #    preview[prev_mask] = (
+    #        0.4 * preview[prev_mask] + 0.6 * np.array([255, 0, 255])
+    #    ).astype(np.uint8)
+    #    cv2.imwrite(str(output_dir / "exclusion_preview.png"), preview)
+    #    cv2.imwrite(str(output_dir / "exclusion_mask.png"), prev_mask.astype(np.uint8) * 255)
 
     sum_u = sum_v = counts = None
     x = y = None
@@ -220,12 +220,13 @@ def _export_flow(
         if from_tracks:
             field = compute_track_pair(
                 tracks, prev_index, index, current.shape, info.fps, config.piv,
-                config.calibration.mm_per_pixel, exclusion_mask=prev_mask | current_mask,
+                config.calibration.mm_per_pixel, 
+                #exclusion_mask=prev_mask | current_mask,
             )
         else:
             field = compute_piv_pair(
                 prev_frame, current, dt, config.piv, config.calibration.mm_per_pixel,
-                exclusion_mask=prev_mask | current_mask,
+                #exclusion_mask=prev_mask | current_mask,
             )
         if sum_u is None:
             sum_u = np.zeros_like(field.u, dtype=float)
@@ -268,24 +269,24 @@ def _export_flow(
     metrics = calculate_flow_properties(mean_field)
     save_plots(mean_field, metrics, output_dir)
 
-    np.savez_compressed(
-        output_dir / "velocity_field.npz",
-        x=x, y=y, u=u, v=v, valid=mean_field.valid,
-        valid_observation_count=counts,
-        speed=metrics.speed,
-        vorticity=metrics.vorticity,
-        divergence=metrics.divergence,
-        strain_rate_magnitude=metrics.strain_rate_magnitude,
-    )
-    pd.DataFrame({
-        "x": x.ravel(), "y": y.ravel(),
-        "u": u.ravel(), "v": v.ravel(),
-        "speed": metrics.speed.ravel(),
-        "vorticity_1_per_s": metrics.vorticity.ravel(),
-        "divergence_1_per_s": metrics.divergence.ravel(),
-        "strain_rate_1_per_s": metrics.strain_rate_magnitude.ravel(),
-        "valid_observations": counts.ravel(),
-    }).to_csv(output_dir / "velocity_field.csv", index=False)
+    #np.savez_compressed(
+    #    output_dir / "velocity_field.npz",
+    #    x=x, y=y, u=u, v=v, valid=mean_field.valid,
+    #    valid_observation_count=counts,
+    #    speed=metrics.speed,
+    #    vorticity=metrics.vorticity,
+    #    divergence=metrics.divergence,
+    #    strain_rate_magnitude=metrics.strain_rate_magnitude,
+    #)
+    #pd.DataFrame({
+    #    "x": x.ravel(), "y": y.ravel(),
+    #    "u": u.ravel(), "v": v.ravel(),
+    #    "speed": metrics.speed.ravel(),
+    #    "vorticity_1_per_s": metrics.vorticity.ravel(),
+    #    "divergence_1_per_s": metrics.divergence.ravel(),
+    #    "strain_rate_1_per_s": metrics.strain_rate_magnitude.ravel(),
+    #    "valid_observations": counts.ravel(),
+    #}).to_csv(output_dir / "velocity_field.csv", index=False)
 
     summary = summarize_field(mean_field, metrics)
     summary.update({
@@ -308,7 +309,7 @@ def _export_flow(
     if tracks is not None or config.tracking.enabled:
         if tracks is None:
             tracks, _ = _prepare_tracks(config, info.fps, output_dir)
-        tracks.to_csv(output_dir / "trajectories.csv", index=False)
+        #tracks.to_csv(output_dir / "trajectories.csv", index=False)
         summary["tracked_particles"] = int(tracks["particle"].nunique())
         summary["trajectory_position_unit"] = mean_field.position_unit
         summary["trajectory_velocity_unit"] = mean_field.velocity_unit

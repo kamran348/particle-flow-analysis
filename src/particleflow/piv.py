@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .config import PIVConfig
-from .exclusion import excluded_piv_windows
+from .exclusion_mask import excluded_piv_windows
 
 
 @dataclass

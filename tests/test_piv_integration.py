@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from particleflow.config import ExclusionConfig, PIVConfig, PreprocessingConfig
-from particleflow.exclusion import build_exclusion_mask, excluded_piv_windows
+from particleflow.exclusion_mask import build_exclusion_mask, excluded_piv_windows
 from particleflow.piv import compute_piv_pair
 from particleflow.preprocessing import preprocess_frame
 
