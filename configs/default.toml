@@ -2,7 +2,7 @@
 path = "data/raw/TACSI_Motion.mp4"
 start_frame = 100
 # Stop is exclusive. 0 means process to the end.
-stop_frame = 300
+stop_frame = 200
 # Analyze every Nth frame (N=1 means every frame).
 step = 10
 # Set only if the video's reported frame rate is wrong or absent.
@@ -34,7 +34,7 @@ mm_per_pixel = 0.0
 
 [tracking]
 enabled = false
-diameter = 151            # must be odd, approximately particle image diameter
+diameter = 15            # must be odd, approximately particle image diameter
 min_mass = 1000.0        # brightness threshold; tune to video increase to ignore more particles
 search_range = 7.0       # maximum displacement per PROCESSED frame, px
 memory = 1               # missed processed frames allowed
